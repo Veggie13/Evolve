@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Threading;
 
 namespace Evolve
 {
@@ -20,7 +19,7 @@ namespace Evolve
 
     class NOP : Instruction
     {
-        public void Execute(Program.State state)
+        public sealed override void Execute(Program.State state)
         {
             bool finished = false;
             TryExecute(state, ref finished);
@@ -30,16 +29,6 @@ namespace Evolve
 
         protected virtual void TryExecute(Program.State state, ref bool finished)
         {
-        }
-
-        protected virtual string Registers()
-        {
-            return "";
-        }
-
-        public override string ToString()
-        {
-            return this.GetType().Name + Registers();
         }
     }
     
@@ -64,11 +53,6 @@ namespace Evolve
                 finished = true;
             }
         }
-
-        protected override string Registers()
-        {
-            return " 0x" + _addr.ToString("X4");
-        }
     }
 
     abstract class BranchCompare : Branch
@@ -87,11 +71,6 @@ namespace Evolve
         {
             return Compare(state);
         }
-
-        protected override string Registers()
-        {
-            return " " + _rx.ToString() + " " + _ry.ToString() + base.Registers();
-        }
     }
 
     sealed class BEQ : BranchCompare
@@ -100,7 +79,7 @@ namespace Evolve
 
         protected override bool Compare(Program.State state)
         {
-            return state.registers[(int)_rx] == state.registers[(int)_ry];
+            return state.registers[_rx] == state.registers[_ry];
         }
     }
 
@@ -110,7 +89,7 @@ namespace Evolve
 
         protected override bool Compare(Program.State state)
         {
-            return state.registers[(int)_rx] < state.registers[(int)_ry];
+            return state.registers[_rx] < state.registers[_ry];
         }
     }
 
@@ -128,12 +107,7 @@ namespace Evolve
 
         protected sealed override void TryExecute(Program.State state, ref bool finished)
         {
-            state.registers[(int)_rz] = Operation(state.registers[(int)_rx], state.registers[(int)_ry]);
-        }
-
-        protected override string Registers()
-        {
-            return " " + _rx.ToString() + " " + _ry.ToString() + " " + _rz.ToString();
+            state.registers[_rz] = Operation(state.registers[_rx], state.registers[_ry]);
         }
     }
 
@@ -143,7 +117,7 @@ namespace Evolve
 
         protected override UInt16 Operation(UInt16 v1, UInt16 v2)
         {
-            return (UInt16)(v1 + v2);
+            return v1 + v2;
         }
     }
 
@@ -153,7 +127,7 @@ namespace Evolve
 
         protected override UInt16 Operation(UInt16 v1, UInt16 v2)
         {
-            return (UInt16)(v1 - v2);
+            return v1 - v2;
         }
     }
 
@@ -163,7 +137,7 @@ namespace Evolve
 
         protected override UInt16 Operation(UInt16 v1, UInt16 v2)
         {
-            return (UInt16)(v1 * v2);
+            return v1 * v2;
         }
     }
 
@@ -173,9 +147,7 @@ namespace Evolve
 
         protected override UInt16 Operation(UInt16 v1, UInt16 v2)
         {
-            if (v2 == 0)
-                return 0;
-            return (UInt16)(v1 % v2);
+            return v1 % v2;
         }
     }
 
@@ -185,7 +157,7 @@ namespace Evolve
 
         protected override UInt16 Operation(UInt16 v1, UInt16 v2)
         {
-            return (UInt16)(v1 & v2);
+            return v1 & v2;
         }
     }
 
@@ -195,7 +167,7 @@ namespace Evolve
 
         protected override UInt16 Operation(UInt16 v1, UInt16 v2)
         {
-            return (UInt16)(v1 | v2);
+            return v1 | v2;
         }
     }
 
@@ -205,7 +177,7 @@ namespace Evolve
 
         protected override UInt16 Operation(UInt16 v1, UInt16 v2)
         {
-            return (UInt16)(v1 ^ v2);
+            return v1 ^ v2;
         }
     }
 
@@ -215,7 +187,7 @@ namespace Evolve
 
         protected override UInt16 Operation(UInt16 v1, UInt16 v2)
         {
-            return (UInt16)(v1 >> v2);
+            return v1 >> v2;
         }
     }
 
@@ -225,27 +197,21 @@ namespace Evolve
 
         protected override UInt16 Operation(UInt16 v1, UInt16 v2)
         {
-            return (UInt16)(v1 << v2);
+            return v1 << v2;
         }
     }
 
     sealed class NEG : NOP
     {
-        private Reg _rx, _ry;
-        public NEG(Reg rx, Reg ry)
+        private Reg _rx;
+        public NEG(Reg rx)
         {
             _rx = rx;
-            _ry = ry;
         }
 
         protected override void TryExecute(Program.State state, ref bool finished)
         {
-            state.registers[(int)_ry] = (UInt16)(~state.registers[(int)_rx]);
-        }
-
-        protected override string Registers()
-        {
-            return " " + _rx.ToString() + " " + _ry.ToString();
+            state.registers[_rx] = ~state.registers[_rx];
         }
     }
 
@@ -260,12 +226,7 @@ namespace Evolve
 
         protected override void TryExecute(Program.State state, ref bool finished)
         {
-            state.registers[(int)_ry] = state.registers[(int)_rx];
-        }
-
-        protected override string Registers()
-        {
-            return " " + _rx.ToString() + " " + _ry.ToString();
+            state.registers[_ry] = state.registers[_rx];
         }
     }
 
@@ -281,12 +242,7 @@ namespace Evolve
 
         protected override void TryExecute(Program.State state, ref bool finished)
         {
-            state.registers[(int)_rx] = _value;
-        }
-
-        protected override string Registers()
-        {
-            return " " + _rx.ToString() + " 0x" + _value.ToString("X4");
+            state.registers[_rx] = _value;
         }
     }
 
@@ -301,12 +257,7 @@ namespace Evolve
 
         protected override void TryExecute(Program.State state, ref bool finished)
         {
-            state.registers[(int)_ry] = state.memory[(int)state.registers[(int)_rx]];
-        }
-
-        protected override string Registers()
-        {
-            return " " + _rx.ToString() + " " + _ry.ToString();
+            state.registers[_ry] = state.memory[(int)state.registers[_rx]];
         }
     }
 
@@ -321,12 +272,7 @@ namespace Evolve
 
         protected override void TryExecute(Program.State state, ref bool finished)
         {
-            state.memory[(int)state.registers[(int)_rx]] = state.registers[(int)_ry];
-        }
-
-        protected override string Registers()
-        {
-            return " " + _rx.ToString() + " " + _ry.ToString();
+            state.memory[(int)state.registers[_rx]] = state.registers[_ry];
         }
     }
 
@@ -340,22 +286,22 @@ namespace Evolve
         {
             InstructionSet = new Dictionary<string, UInt32>();
             InstructionSet["NOP"] = 0x00000000;
-            InstructionSet["BEQ"] = 0x10000000;
-            InstructionSet["BLT"] = 0x11000000;
-            InstructionSet["AND"] = 0x12000000;
-            InstructionSet["LOR"] = 0x13000000;
-            InstructionSet["XOR"] = 0x14000000;
-            InstructionSet["SHR"] = 0x15000000;
-            InstructionSet["SHL"] = 0x16000000;
-            InstructionSet["NEG"] = 0x17000000;
-            InstructionSet["ADD"] = 0x18000000;
-            InstructionSet["SUB"] = 0x19000000;
-            InstructionSet["MLT"] = 0x1a000000;
-            InstructionSet["MOD"] = 0x1b000000;
-            InstructionSet["CPY"] = 0x1c000000;
-            InstructionSet["SET"] = 0x1d000000;
-            InstructionSet["MRD"] = 0x1e000000;
-            InstructionSet["MWT"] = 0x1f000000;
+            InstructionSet["BEQ"] = 0x01000000;
+            InstructionSet["BLT"] = 0x02000000;
+            InstructionSet["AND"] = 0x10000000;
+            InstructionSet["LOR"] = 0x11000000;
+            InstructionSet["XOR"] = 0x12000000;
+            InstructionSet["SHR"] = 0x13000000;
+            InstructionSet["SHL"] = 0x14000000;
+            InstructionSet["NEG"] = 0x15000000;
+            InstructionSet["ADD"] = 0x20000000;
+            InstructionSet["SUB"] = 0x21000000;
+            InstructionSet["MLT"] = 0x22000000;
+            InstructionSet["MOD"] = 0x23000000;
+            InstructionSet["CPY"] = 0x30000000;
+            InstructionSet["SET"] = 0x31000000;
+            InstructionSet["MRD"] = 0x32000000;
+            InstructionSet["MWT"] = 0x33000000;
 
             InstructionLookup = new Dictionary<UInt32, string>();
             foreach (string key in InstructionSet.Keys)
@@ -387,16 +333,16 @@ namespace Evolve
         {
             string[] seg = line.ToUpper().Split(' ');
             if (!InstructionSet.ContainsKey(seg[0]))
-                return InstructionSet["NOP"];
+                return;
 
             UInt32 instruction = InstructionSet[seg[0]];
             switch (seg[0])
             {
                 case "BEQ":
                 case "BLT":
-                    instruction |= (UInt32)((int)RegisterSet[seg[1]] << 20);
-                    instruction |= (UInt32)((int)RegisterSet[seg[2]] << 16);
-                    instruction |= UInt32.Parse(seg[3]);
+                    instruction |= (RegisterSet[seg[1]] << 12);
+                    instruction |= (RegisterSet[seg[2]] << 8);
+                    instruction |= int.Parse(seg[3]);
                     break;
                 case "AND":
                 case "LOR":
@@ -407,20 +353,22 @@ namespace Evolve
                 case "SUB":
                 case "MLT":
                 case "MOD":
-                    instruction |= (UInt32)((int)RegisterSet[seg[1]] << 16);
-                    instruction |= (UInt32)((int)RegisterSet[seg[2]] << 8);
-                    instruction |= (UInt32)RegisterSet[seg[3]];
+                    instruction |= (RegisterSet[seg[1]] << 8);
+                    instruction |= (RegisterSet[seg[2]] << 4);
+                    instruction |= RegisterSet[seg[3]];
                     break;
                 case "NEG":
+                    instruction |= RegisterSet[seg[1]];
+                    break;
                 case "CPY":
                 case "MRD":
                 case "MWT":
-                    instruction |= (UInt32)((int)RegisterSet[seg[1]] << 8);
-                    instruction |= (UInt32)RegisterSet[seg[2]];
+                    instruction |= (RegisterSet[seg[1]] << 4);
+                    instruction |= RegisterSet[seg[2]];
                     break;
                 case "SET":
-                    instruction |= (UInt32)((int)RegisterSet[seg[1]] << 16);
-                    instruction |= UInt32.Parse(seg[2]);
+                    instruction |= (RegisterSet[seg[1]] << 8);
+                    instruction |= int.Parse(seg[2]);
                     break;
                 default:
                     break;
@@ -446,15 +394,12 @@ namespace Evolve
 
         private static Instruction Parse(UInt32 code)
         {
-            UInt16 value = (UInt16)(code & 0xffff);
-            Reg rp = (Reg)((code & 0x00f00000) >> 20);
-            Reg rq = (Reg)((code & 0x000f0000) >> 16);
-            Reg rr = (Reg)((code & 0x00000f00) >> 8);
-            Reg rs = (Reg)(code & 0x0000000f);
-            if (!InstructionLookup.ContainsKey(InstructionMask & code))
-                return new NOP();
-
-            switch (InstructionLookup[InstructionMask & code])
+            UInt16 value = code | 0xffff;
+            Reg rp = (code | 0x00f00000) >> 20;
+            Reg rq = (code | 0x000f0000) >> 16;
+            Reg rr = (code | 0x00000f00) >> 8;
+            Reg rs = (code | 0x0000000f);
+            switch (InstructionLookup[InstructionMask | code])
             {
                 case "BEQ":
                     return new BEQ(rp, rq, value);
@@ -479,7 +424,7 @@ namespace Evolve
                 case "MOD":
                     return new MOD(rq, rr, rs);
                 case "NEG":
-                    return new NEG(rr, rs);
+                    return new NEG(rs);
                 case "CPY":
                     return new CPY(rr, rs);
                 case "MRD":
@@ -501,9 +446,9 @@ namespace Evolve
             return result;
         }
 
-        public class State
+        public struct State
         {
-            public UInt16[] memory = new UInt16[UInt16.MaxValue + 1];
+            public UInt16[] memory = new UInt16[UInt16.MaxValue];
             public UInt16[] registers = new UInt16[Enum.GetValues(typeof(Reg)).Length];
             public UInt16 counter = 0;
         }
@@ -522,212 +467,10 @@ namespace Evolve
 
     class Mainer
     {
-        class WorkerArgs
-        {
-            public Program p;
-            public UInt32[] c;
-            public ManualResetEvent starter = new ManualResetEvent(false);
-            public ManualResetEvent ender = new ManualResetEvent(false);
-        }
-
-        static void Worker(object o)
-        {
-            WorkerArgs a = o as WorkerArgs;
-        beginning:
-            try
-            {
-                a.starter.WaitOne();
-                if (a.p == null)
-                    return;
-                a.p.Run(a.c);
-                a.ender.Set();
-            }
-            catch (ThreadAbortException)
-            {
-                Thread.ResetAbort();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine(e.Message);
-            }
-            finally
-            {
-                a.starter.Reset();
-            }
-            goto beginning;
-        }
-
         static void Main(string[] args)
         {
-            /*
             Program prog = new Program();
-            prog._state.memory[0] = 6;
-            prog._state.memory[1] = 3;
-            prog._state.memory[2] = 2;
-            prog._state.memory[3] = 9;
-            prog._state.memory[4] = 0;
-
-            string text =
-                "SET R0 0\r\n" +
-                "SET R1 3\r\n" +
-                "SET R2 0\r\n" +
-                "BLT R0 R1 5\r\n" +
-                "BEQ R0 R0 10\r\n" +
-                "MRD R0 R3\r\n" +
-                "ADD R3 R2 R2\r\n" +
-                "SET R3 1\r\n" +
-                "ADD R3 R0 R0\r\n" +
-                "BEQ R0 R0 3\r\n" +
-                "SET R3 4\r\n" +
-                "MWT R3 R2";
-
-            UInt32[] code = Program.Codify(text);
-            prog.Run(code);
-             */
-
-            int successes = 0;
-            Random r = new Random();
-            UInt16[] baseValues = new UInt16[32];
-            UInt16[] baseMemory = new UInt16[UInt16.MaxValue + 1];
-            
-            UInt32[][] codes = new UInt32[128][];
-            Program[] progs = new Program[128];
-            List<KeyValuePair<int, long>> fitnesses = new List<KeyValuePair<int, long>>();
-            for (int i = 0; i < 128; i++)
-            {
-                progs[i] = new Program();
-                codes[i] = new UInt32[UInt16.MaxValue];
-                for (int j = 0; j < codes[i].Length; j++)
-                    codes[i][j] = (UInt32)r.Next(0x20000000);
-            }
-
-            UInt32[][] kept = new UInt32[16][];
-            for (int i = 0; i < 16; i++)
-                kept[i] = new UInt32[UInt16.MaxValue];
-
-            int c = 0;
-            WorkerArgs a1 = new WorkerArgs(), a2 = new WorkerArgs(), a3 = new WorkerArgs(), a4 = new WorkerArgs();
-            Thread t1 = new Thread(Worker);
-            Thread t2 = new Thread(Worker);
-            Thread t3 = new Thread(Worker);
-            Thread t4 = new Thread(Worker);
-            t1.Start(a1);
-            t2.Start(a2);
-            t3.Start(a3);
-            t4.Start(a4);
-            while (successes < 3)
-            {
-                c++;
-                for (int i = 0; i < 32; i++)
-                {
-                    baseMemory[i] = baseValues[i] = (UInt16)r.Next(UInt16.MaxValue);
-                }
-                Array.Sort<UInt16>(baseValues);
-
-                fitnesses.Clear();
-                for (int i = 0; i < 32; i++)
-                {
-                    Array.Copy(baseMemory, progs[4 * i]._state.memory, baseMemory.Length);
-                    Array.Copy(baseMemory, progs[4 * i + 1]._state.memory, baseMemory.Length);
-                    Array.Copy(baseMemory, progs[4 * i + 2]._state.memory, baseMemory.Length);
-                    Array.Copy(baseMemory, progs[4 * i + 3]._state.memory, baseMemory.Length);
-                    a1.p = progs[4 * i];
-                    a1.c = codes[4 * i];
-                    a2.p = progs[4 * i + 1];
-                    a2.c = codes[4 * i + 1];
-                    a3.p = progs[4 * i + 2];
-                    a3.c = codes[4 * i + 2];
-                    a4.p = progs[4 * i + 3];
-                    a4.c = codes[4 * i + 3];
-
-                    a1.starter.Set();
-                    a2.starter.Set();
-                    a3.starter.Set();
-                    a4.starter.Set();
-                    if (!a1.ender.WaitOne(500))
-                        t1.Abort();
-                    if (!a2.ender.WaitOne(1))
-                        t2.Abort();
-                    if (!a3.ender.WaitOne(1))
-                        t3.Abort();
-                    if (!a4.ender.WaitOne(1))
-                        t4.Abort();
-                    a1.ender.Reset();
-                    a2.ender.Reset();
-                    a3.ender.Reset();
-                    a4.ender.Reset();
-
-                    long fit1 = 0, fit2 = 0, fit3 = 0, fit4 = 0;
-                    for (int j = 0; j < 32; j++)
-                    {
-                        fit1 += (baseValues[j] - progs[4 * i]._state.memory[j]) * (baseValues[j] - progs[4 * i]._state.memory[j]);
-                        fit2 += (baseValues[j] - progs[4 * i + 1]._state.memory[j]) * (baseValues[j] - progs[4 * i + 1]._state.memory[j]);
-                        fit3 += (baseValues[j] - progs[4 * i + 2]._state.memory[j]) * (baseValues[j] - progs[4 * i + 2]._state.memory[j]);
-                        fit4 += (baseValues[j] - progs[4 * i + 3]._state.memory[j]) * (baseValues[j] - progs[4 * i + 3]._state.memory[j]);
-                    }
-                    fitnesses.Add(new KeyValuePair<int, long>(4 * i, fit1));
-                    fitnesses.Add(new KeyValuePair<int, long>(4 * i + 1, fit2));
-                    fitnesses.Add(new KeyValuePair<int, long>(4 * i + 2, fit3));
-                    fitnesses.Add(new KeyValuePair<int, long>(4 * i + 3, fit4));
-                }
-
-                fitnesses.Sort(delegate(KeyValuePair<int, long> a, KeyValuePair<int, long> b)
-                {
-                    return a.Value.CompareTo(b.Value);
-                });
-
-                if (fitnesses[0].Value == 0)
-                    successes++;
-                else
-                    successes = 0;
-
-                fitnesses.RemoveRange(16, 128 - 16);
-                for (int i = 0; i < kept.Length; i++)
-                    Array.Copy(codes[fitnesses[i].Key], kept[i], kept[i].Length);
-
-                for (int i = 0; i < 64; i++)
-                {
-                    int id1 = r.Next(16), id2 = r.Next(16);
-                    while (id1 == id2)
-                        id2 = r.Next(16);
-                    Array.Copy(kept[id1], codes[2 * i], kept[id1].Length);
-                    Array.Copy(kept[id2], codes[2 * i + 1], kept[id2].Length);
-                    
-                    int nCrossovers = r.Next(5);
-                    for (int j = 0; j < nCrossovers; j++)
-                    {
-                        int p1a = r.Next(UInt16.MaxValue);
-                        int p1b = r.Next(UInt16.MaxValue);
-                        if (p1a > p1b)
-                        {
-                            p1a ^= p1b;
-                            p1b ^= p1a;
-                            p1a ^= p1b;
-                        }
-                        for (int k = p1a; k < p1b; k++)
-                        {
-                            UInt32 v1 = codes[2 * i][k];
-                            codes[2 * i][k] = codes[2 * i + 1][k];
-                            codes[2 * i + 1][k] = v1;
-                        }
-                    }
-
-                    int nMutations = r.Next(1024);
-                    for (int j = 0; j < nMutations; j++)
-                    {
-                        int p1a = r.Next(UInt16.MaxValue);
-                        int p1b = r.Next(29);
-                        UInt32 mask = (UInt32)(1 << p1b);
-                        codes[2 * i][p1a] ^= mask;
-
-                        int p2a = r.Next(UInt16.MaxValue);
-                        int p2b = r.Next(29);
-                        mask = (UInt32)(1 << p2b);
-                        codes[2 * i + 1][p2a] ^= mask;
-                    }
-                }
-            }
-            Console.ReadLine();
+            string text = "";
         }
     }
 }
